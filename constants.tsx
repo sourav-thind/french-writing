@@ -11,7 +11,8 @@ export const COLLECTIONS: Collection[] = [
       { french: "Enchanté de faire votre connaissance.", english: "Nice to meet you." },
       { french: "Salut ! Bonne journée à toi.", english: "Hi! Have a nice day." },
       { french: "Comment t'appelles-tu ?", english: "What is your name?" },
-      { french: "Je m'appelle Jean.", english: "My name is Jean." }
+      { french: "Je m'appelle Jean.", english: "My name is Jean." },
+      
     ]
   },
   {
