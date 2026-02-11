@@ -1,7 +1,15 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sentence, Collection } from '../types';
 import { speechService } from '../services/speechService';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getFirestore, collection as firestoreCollection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { app } from '../services/firebase';
+import { useAuth } from '../contexts/AuthContext';
+
+const storage = getStorage(app);
+const db = getFirestore(app);
 
 interface PracticeSessionProps {
   collection: Collection;
@@ -11,6 +19,64 @@ interface PracticeSessionProps {
 type SpeechSpeed = 0.6 | 0.9 | 1.3;
 
 const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack }) => {
+  // --- File Upload State ---
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && user) {
+      fetchUserFiles(user.uid);
+    } else if (!user) {
+      setUploadedFiles([]);
+    }
+  }, [user, loading]);
+
+  const fetchUserFiles = async (uid: string) => {
+    try {
+      const filesRef = firestoreCollection(db, 'userFiles');
+      const q = query(filesRef, where('uid', '==', uid));
+      const querySnapshot = await getDocs(q);
+      const files = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setUploadedFiles(files);
+    } catch (err) {
+      setError('Could not fetch files.');
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!file || !user) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const storageRef = ref(storage, `user_uploads/${user.uid}/${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      // Save metadata in Firestore
+      await addDoc(firestoreCollection(db, 'userFiles'), {
+        uid: user.uid,
+        name: file.name,
+        url,
+        uploadedAt: new Date()
+      });
+      setFile(null);
+      fetchUserFiles(user.uid);
+    } catch (err: any) {
+      setError('Upload failed. Please try again.');
+    }
+    setUploading(false);
+  };
+
+  // --- Practice Session State ---
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInputs, setUserInputs] = useState<string[]>([]);
   const [currentCharIdx, setCurrentCharIdx] = useState(0);
@@ -30,13 +96,11 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
 
   useEffect(() => {
     startSentence();
-  }, [currentIndex]); // Only restart when the sentence index changes, speed changes handled by buttons
+  }, [currentIndex]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (isFinished) return;
-
     const target = currentSentence.french;
-    
     if (e.key === 'Backspace') {
       if (currentCharIdx > 0) {
         const newInputs = [...userInputs];
@@ -46,15 +110,12 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
       }
       return;
     }
-
     if (e.key.length === 1) {
       const char = e.key;
       if (currentCharIdx >= target.length) return;
-
       const newInputs = [...userInputs, char];
       setUserInputs(newInputs);
       setCurrentCharIdx(prev => prev + 1);
-
       if (currentCharIdx + 1 === target.length) {
         setIsFinished(true);
       }
@@ -95,6 +156,29 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8">
+      {/* File Upload Section */}
+      <div className="mb-8 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+        <h2 className="text-lg font-bold mb-2">Upload a File (optional)</h2>
+        {error && <div className="text-red-500 mb-2">{error}</div>}
+        <input type="file" onChange={handleFileChange} className="mb-2" />
+        <button
+          onClick={handleUpload}
+          disabled={!file || uploading || !user}
+          className="bg-indigo-600 text-white px-4 py-1 rounded disabled:opacity-50 ml-2"
+        >
+          {uploading ? 'Uploading...' : 'Upload'}
+        </button>
+        <ul className="list-disc pl-6 mt-2">
+          {uploadedFiles.map(f => (
+            <li key={f.id}>
+              <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{f.name}</a>
+            </li>
+          ))}
+        </ul>
+        {!user && <div className="text-slate-500 mt-2">Please sign in to upload and view your files.</div>}
+      </div>
+
+      {/* Main Practice UI */}
       <div className="mb-6">
         <button 
           onClick={onBack}
@@ -147,14 +231,11 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
           {currentSentence.french.split('').map((char, idx) => {
             const userInput = userInputs[idx];
             let colorClass = "text-slate-200";
-            
             if (userInput !== undefined) {
               const isCorrect = userInput.toLowerCase() === char.toLowerCase();
               colorClass = isCorrect ? "text-emerald-500" : "text-rose-500";
             }
-
             const isCurrent = idx === currentCharIdx;
-
             return (
               <span 
                 key={idx} 
