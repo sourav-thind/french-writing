@@ -263,7 +263,35 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
             })}
         </div>
 
-     
+        {/* French Character Buttons */}
+        <div className="flex flex-wrap justify-center gap-2 mb-6 px-4">
+          {['é', 'è', 'à', 'ô', 'û', 'î', 'ç', 'ï', '«', '»'].map((char) => (
+            <button
+              key={char}
+              onClick={() => {
+                if (isFinished || currentCharIdx >= currentSentence.french.length) return;
+                const targetChar = currentSentence.french[currentCharIdx];
+                const isCorrect = char.toLowerCase() === targetChar.toLowerCase();
+                
+                if (isCorrect) {
+                  const newInputs = [...userInputs, char];
+                  setUserInputs(newInputs);
+                  setCurrentCharIdx(prev => prev + 1);
+                  setHasError(false);
+                  if (currentCharIdx + 1 === currentSentence.french.length) {
+                    setIsFinished(true);
+                  }
+                } else {
+                  setHasError(true);
+                }
+                inputRef.current?.focus();
+              }}
+              className="w-10 h-10 bg-white border border-slate-300 rounded-lg text-lg font-semibold text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm"
+            >
+              {char}
+            </button>
+          ))}
+        </div>
 
         {showTranslation && (
           <div className="mt-auto w-full text-center">
