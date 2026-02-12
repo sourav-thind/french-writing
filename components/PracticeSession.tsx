@@ -82,6 +82,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
   const [currentCharIdx, setCurrentCharIdx] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [wrongIndices, setWrongIndices] = useState<Set<number>>(new Set());
   const [speed, setSpeed] = useState<SpeechSpeed>(0.9);
   const [showTranslation, setShowTranslation] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +97,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
     setCurrentCharIdx(0);
     setIsFinished(false);
     setHasError(false);
+    setWrongIndices(new Set());
     if (inputRef.current) inputRef.current.focus();
   }, [currentSentence, speed]);
 
@@ -112,7 +114,12 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
         newInputs.pop();
         setUserInputs(newInputs);
         setCurrentCharIdx(prev => prev - 1);
-        setHasError(false);
+        // Remove from wrong indices if it was wrong
+        const newWrongIndices = new Set(wrongIndices);
+        newWrongIndices.delete(currentCharIdx - 1);
+        setWrongIndices(newWrongIndices);
+        // Update hasError based on remaining wrong indices
+        setHasError(newWrongIndices.size > 0);
       }
       return;
     }
@@ -122,16 +129,28 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
       const targetChar = target[currentCharIdx];
       const isCorrect = char.toLowerCase() === targetChar.toLowerCase();
       
+      // Always save the input
+      const newInputs = [...userInputs, char];
+      setUserInputs(newInputs);
+      setCurrentCharIdx(prev => prev + 1);
+      
       if (isCorrect) {
-        const newInputs = [...userInputs, char];
-        setUserInputs(newInputs);
-        setCurrentCharIdx(prev => prev + 1);
-        setHasError(false);
-        if (currentCharIdx + 1 === target.length) {
-          setIsFinished(true);
-        }
+        // Remove from wrong indices if correcting a previous wrong
+        const newWrongIndices = new Set(wrongIndices);
+        newWrongIndices.delete(currentCharIdx);
+        setWrongIndices(newWrongIndices);
+        setHasError(newWrongIndices.size > 0);
       } else {
+        // Mark this index as wrong
+        const newWrongIndices = new Set(wrongIndices);
+        newWrongIndices.add(currentCharIdx);
+        setWrongIndices(newWrongIndices);
         setHasError(true);
+      }
+      
+      // Check completion
+      if (currentCharIdx + 1 === target.length && wrongIndices.size === 0 && isCorrect) {
+        setIsFinished(true);
       }
     }
   };
@@ -142,8 +161,12 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
     const newInputs = [...userInputs, hintChar];
     setUserInputs(newInputs);
     setCurrentCharIdx(prev => prev + 1);
-    setHasError(false);
-    if (currentCharIdx + 1 === currentSentence.french.length) {
+    // Remove this index from wrong indices if it was there
+    const newWrongIndices = new Set(wrongIndices);
+    newWrongIndices.delete(currentCharIdx);
+    setWrongIndices(newWrongIndices);
+    setHasError(newWrongIndices.size > 0);
+    if (currentCharIdx + 1 === currentSentence.french.length && newWrongIndices.size === 0) {
       setIsFinished(true);
     }
   };
@@ -234,6 +257,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
             {currentSentence.french.split('').map((char, idx) => {
               const userInput = userInputs[idx];
               const isCurrent = idx === currentCharIdx;
+              const isWrong = wrongIndices.has(idx);
               let colorClass = "text-slate-200";
               let displayChar = char === ' ' ? '\u00A0' : '_';
             
@@ -242,7 +266,8 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
                 if (isCurrent) {
                   displayChar = '\u00A0';
                 } else if (userInput !== undefined) {
-                  displayChar = char;
+                  // Show empty space for wrong characters, correct char for right ones
+                  displayChar = isWrong ? (char === ' ' ? '\u00A0' : '_') : char;
                 }
               } else if (userInput !== undefined) {
                 const isCorrect = userInput.toLowerCase() === char.toLowerCase();
@@ -273,16 +298,25 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
                 const targetChar = currentSentence.french[currentCharIdx];
                 const isCorrect = char.toLowerCase() === targetChar.toLowerCase();
                 
+                // Always save the input
+                const newInputs = [...userInputs, char];
+                setUserInputs(newInputs);
+                setCurrentCharIdx(prev => prev + 1);
+                
                 if (isCorrect) {
-                  const newInputs = [...userInputs, char];
-                  setUserInputs(newInputs);
-                  setCurrentCharIdx(prev => prev + 1);
-                  setHasError(false);
-                  if (currentCharIdx + 1 === currentSentence.french.length) {
-                    setIsFinished(true);
-                  }
+                  const newWrongIndices = new Set(wrongIndices);
+                  newWrongIndices.delete(currentCharIdx);
+                  setWrongIndices(newWrongIndices);
+                  setHasError(newWrongIndices.size > 0);
                 } else {
+                  const newWrongIndices = new Set(wrongIndices);
+                  newWrongIndices.add(currentCharIdx);
+                  setWrongIndices(newWrongIndices);
                   setHasError(true);
+                }
+                
+                if (currentCharIdx + 1 === currentSentence.french.length && wrongIndices.size === 0 && isCorrect) {
+                  setIsFinished(true);
                 }
                 inputRef.current?.focus();
               }}
