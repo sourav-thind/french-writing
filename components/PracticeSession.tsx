@@ -81,16 +81,21 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
   const [userInputs, setUserInputs] = useState<string[]>([]);
   const [currentCharIdx, setCurrentCharIdx] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const [speed, setSpeed] = useState<SpeechSpeed>(0.9);
+  const [showTranslation, setShowTranslation] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const currentSentence = collection.sentences[currentIndex];
+
+  const toggleTranslation = () => setShowTranslation(prev => !prev);
 
   const startSentence = useCallback(() => {
     speechService.speak(currentSentence.french, speed);
     setUserInputs([]);
     setCurrentCharIdx(0);
     setIsFinished(false);
+    setHasError(false);
     if (inputRef.current) inputRef.current.focus();
   }, [currentSentence, speed]);
 
@@ -107,17 +112,26 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
         newInputs.pop();
         setUserInputs(newInputs);
         setCurrentCharIdx(prev => prev - 1);
+        setHasError(false);
       }
       return;
     }
     if (e.key.length === 1) {
       const char = e.key;
       if (currentCharIdx >= target.length) return;
-      const newInputs = [...userInputs, char];
-      setUserInputs(newInputs);
-      setCurrentCharIdx(prev => prev + 1);
-      if (currentCharIdx + 1 === target.length) {
-        setIsFinished(true);
+      const targetChar = target[currentCharIdx];
+      const isCorrect = char.toLowerCase() === targetChar.toLowerCase();
+      
+      if (isCorrect) {
+        const newInputs = [...userInputs, char];
+        setUserInputs(newInputs);
+        setCurrentCharIdx(prev => prev + 1);
+        setHasError(false);
+        if (currentCharIdx + 1 === target.length) {
+          setIsFinished(true);
+        }
+      } else {
+        setHasError(true);
       }
     }
   };
@@ -128,6 +142,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
     const newInputs = [...userInputs, hintChar];
     setUserInputs(newInputs);
     setCurrentCharIdx(prev => prev + 1);
+    setHasError(false);
     if (currentCharIdx + 1 === currentSentence.french.length) {
       setIsFinished(true);
     }
@@ -156,39 +171,27 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8">
-      {/* File Upload Section */}
-      <div className="mb-8 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-        <h2 className="text-lg font-bold mb-2">Upload a File (optional)</h2>
-        {error && <div className="text-red-500 mb-2">{error}</div>}
-        <input type="file" onChange={handleFileChange} className="mb-2" />
-        <button
-          onClick={handleUpload}
-          disabled={!file || uploading || !user}
-          className="bg-indigo-600 text-white px-4 py-1 rounded disabled:opacity-50 ml-2"
-        >
-          {uploading ? 'Uploading...' : 'Upload'}
-        </button>
-        <ul className="list-disc pl-6 mt-2">
-          {uploadedFiles.map(f => (
-            <li key={f.id}>
-              <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{f.name}</a>
-            </li>
-          ))}
-        </ul>
-        {!user && <div className="text-slate-500 mt-2">Please sign in to upload and view your files.</div>}
-      </div>
 
       {/* Main Practice UI */}
-      <div className="mb-6">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl p-8 md:p-12 mb-8 min-h-[320px] max-w-5xl w-full flex flex-col items-center relative overflow-hidden border border-slate-100">
+        {/* Back button - top left */}
         <button 
           onClick={onBack}
-          className="text-slate-500 hover:text-slate-800 flex items-center gap-2 transition-colors font-medium"
+          className="absolute top-6 left-6 text-slate-400 hover:text-slate-600 flex items-center gap-2 transition-colors font-medium z-10"
         >
-          <i className="fas fa-arrow-left"></i> Retour aux collections
+          <i className="fas fa-arrow-left"></i>
         </button>
-      </div>
 
-      <div className="bg-white rounded-[2.5rem] shadow-2xl p-8 md:p-12 mb-8 min-h-[500px] flex flex-col items-center relative overflow-hidden border border-slate-100">
+        {/* Translation toggle - top right */}
+        <button 
+          onClick={toggleTranslation}
+          className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 flex items-center gap-2 transition-colors font-medium z-10 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100"
+          title={showTranslation ? "Masquer la traduction" : "Afficher la traduction"}
+        >
+          <i className={`fas ${showTranslation ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+          <span className="text-sm">{showTranslation ? "Cacher" : "Traduire"}</span>
+        </button>
+
         {/* Hidden input to capture keyboard events */}
         <input 
           ref={inputRef}
@@ -199,7 +202,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
         />
 
         {/* Central Voice Controls */}
-        <div className="flex items-center gap-6 mb-16 bg-slate-50 p-4 rounded-3xl border border-slate-100 shadow-inner">
+        <div className="flex items-center gap-6 mb-4 bg-slate-50 p-4 rounded-3xl border border-slate-100 shadow-inner mt-0">
           <button 
             onClick={toggleSpeed}
             className="flex flex-col items-center justify-center w-20 h-20 bg-white text-indigo-600 rounded-2xl hover:bg-indigo-50 transition-all shadow-md border border-slate-200"
@@ -227,34 +230,49 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
         </div>
 
         {/* Typing Area */}
-        <div className="w-full mb-16 flex flex-wrap justify-center gap-x-1.5 gap-y-3 px-4">
-          {currentSentence.french.split('').map((char, idx) => {
-            const userInput = userInputs[idx];
-            let colorClass = "text-slate-200";
-            if (userInput !== undefined) {
-              const isCorrect = userInput.toLowerCase() === char.toLowerCase();
-              colorClass = isCorrect ? "text-emerald-500" : "text-rose-500";
-            }
-            const isCurrent = idx === currentCharIdx;
-            return (
-              <span 
-                key={idx} 
-                className={`text-4xl md:text-6xl font-bold mono-font border-b-4 transition-all duration-150 min-w-[1.2rem] text-center ${colorClass} ${isCurrent ? 'border-indigo-500 bg-indigo-50/50' : 'border-transparent'}`}
-                onClick={() => inputRef.current?.focus()}
-              >
-                {userInput !== undefined ? char : (char === ' ' ? '\u00A0' : '_')}
-                {isCurrent && <span className="absolute w-[3px] h-12 bg-indigo-500 cursor-blink -mt-1 ml-0.5" />}
-              </span>
-            );
-          })}
+        <div className="w-full mb-6 flex flex-wrap justify-center gap-x-1.5 gap-y-3 px-4">
+            {currentSentence.french.split('').map((char, idx) => {
+              const userInput = userInputs[idx];
+              const isCurrent = idx === currentCharIdx;
+              let colorClass = "text-slate-200";
+              let displayChar = char === ' ' ? '\u00A0' : '_';
+            
+              if (hasError) {
+                colorClass = "text-rose-500";
+                if (isCurrent) {
+                  displayChar = '\u00A0';
+                } else if (userInput !== undefined) {
+                  displayChar = char;
+                }
+              } else if (userInput !== undefined) {
+                const isCorrect = userInput.toLowerCase() === char.toLowerCase();
+                colorClass = isCorrect ? "text-emerald-500" : "text-rose-500";
+                displayChar = char;
+              }
+            
+              return (
+                <span 
+                  key={idx} 
+                  className={`text-4xl md:text-5xl font-bold font-mono border-b-2 transition-all duration-150 min-w-[0.9rem] text-center ${colorClass} ${isCurrent ? 'border-indigo-500 bg-indigo-50/50' : 'border-transparent'}`}
+                  onClick={() => inputRef.current?.focus()}
+                >
+                  {displayChar}
+                  {isCurrent && <span className="absolute w-[1.5px] h-5 bg-indigo-500 cursor-blink -mt-1 ml-0.5" />}
+                </span>
+              );
+            })}
         </div>
 
-        <div className="mt-auto w-full text-center">
-          <div className="text-slate-400 text-xs uppercase tracking-[0.2em] mb-3 font-black">Traduction Anglaise</div>
-          <p className="text-2xl md:text-3xl text-slate-700 italic font-medium leading-relaxed">
-            "{currentSentence.english}"
-          </p>
-        </div>
+     
+
+        {showTranslation && (
+          <div className="mt-auto w-full text-center">
+            <div className="text-slate-400 text-xs uppercase tracking-[0.2em] mb-3 font-black">Traduction Anglaise</div>
+            <p className="text-xl md:text-xl text-slate-700 italic font-medium leading-relaxed">
+              "{currentSentence.english}"
+            </p>
+          </div>
+        )}
 
         <div className="mt-16 flex gap-4 w-full justify-center">
           {!isFinished ? (
