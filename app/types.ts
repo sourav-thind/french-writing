@@ -10,7 +10,7 @@ export interface Collection {
   sentences: Sentence[];
 }
 
-export type AppMode = 'home' | 'collections' | 'practice' | 'ai';
+export type AppMode = 'home' | 'collections' | 'practice' | 'ai' | 'tef' | 'normal-practice';
 
 export enum PracticeState {
   SELECTING = 'SELECTING',
