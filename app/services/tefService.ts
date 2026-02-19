@@ -7,14 +7,17 @@ export interface TEFTask {
   id: string;
   type: 'tache1' | 'tache2';
   title: string;
-  description: string;
   scenario: string;
-  wordCount: {
+  // Optional fields with defaults
+  description?: string;
+  wordCount?: {
     min: number;
     max: number;
   };
-  difficulty: 'A1' | 'A2' | 'B1' | 'B2';
-  points: number;
+  difficulty?: 'A1' | 'A2' | 'B1' | 'B2';
+  points?: number;
+  answer?: string; // Optional model answer
+  createdAt?: Timestamp;
 }
 
 export interface UserEssay {
@@ -110,10 +113,23 @@ export const tefService = {
       const q = query(tasksRef, where('type', '==', type));
       const snapshot = await getDocs(q);
       
-      const tasks = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as TEFTask));
+      const tasks = snapshot.docs.map(doc => {
+        const data = doc.data();
+        // Provide defaults for missing fields
+        return {
+          id: doc.id,
+          type: data.type,
+          title: data.title,
+          scenario: data.scenario,
+          // Optional fields with defaults
+          description: data.description || (type === 'tache1' ? 'Message, invitation, lettre informelle' : 'Lettre formelle, opinion, réclamation'),
+          wordCount: data.wordCount || (type === 'tache1' ? { min: 60, max: 120 } : { min: 120, max: 150 }),
+          difficulty: data.difficulty || 'B1',
+          points: data.points || 15,
+          answer: data.answer || '',
+          createdAt: data.createdAt
+        } as TEFTask;
+      });
       
       // If no tasks found in database, use sample tasks
       if (tasks.length === 0) {
