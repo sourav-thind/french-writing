@@ -160,12 +160,13 @@ export async function evaluateWriting(
     
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Try models in order of preference (using correct model names)
-   const models = [
-  "gemini-2.5-flash", // Recommandé : Rapide et économique
-  "gemini-2.5-pro",   // Meilleur pour l'évaluation pédagogique
-  "gemini-3-flash",   // Nouvelle génération si disponible sur votre plan
-];
+    // Try models in order of preference
+    // Note: gemini-1.5 models are widely available on free tier
+    const models = [
+      'gemini-1.5-flash',  // Fast, widely available
+      'gemini-1.5-pro',    // Better quality, also widely available
+      'gemini-1.0-pro'     // Fallback for older accounts
+    ];
     let lastError: any = null;
     
     for (const modelName of models) {
