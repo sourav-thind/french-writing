@@ -1,20 +1,25 @@
+'use client';
 
 class SpeechService {
-  private synth: SpeechSynthesis;
+  private synth: SpeechSynthesis | null = null;
   private frenchVoice: SpeechSynthesisVoice | null = null;
   private defaultRate: number = 0.9;
 
   constructor() {
-    this.synth = window.speechSynthesis;
-    this.initVoices();
+    if (typeof window !== 'undefined') {
+      this.synth = window.speechSynthesis;
+      this.initVoices();
+    }
   }
 
   private initVoices() {
+    if (!this.synth) return;
     const voices = this.synth.getVoices();
     this.frenchVoice = voices.find(v => v.lang.startsWith('fr')) || null;
     
     if (!this.frenchVoice) {
       this.synth.onvoiceschanged = () => {
+        if (!this.synth) return;
         const updatedVoices = this.synth.getVoices();
         this.frenchVoice = updatedVoices.find(v => v.lang.startsWith('fr')) || null;
       };
@@ -22,6 +27,7 @@ class SpeechService {
   }
 
   speak(text: string, rate?: number) {
+    if (!this.synth) return;
     if (this.synth.speaking) this.synth.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     if (this.frenchVoice) {

@@ -1,4 +1,3 @@
-
 import { Collection } from './types';
 
 export const COLLECTIONS: Collection[] = [

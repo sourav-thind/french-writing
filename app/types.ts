@@ -1,4 +1,3 @@
-
 export interface Sentence {
   french: string;
   english: string;
