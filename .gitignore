@@ -29,3 +29,14 @@ out
 # Environment variables
 .env*.local
 .env
+
+# Service account keys
+*serviceAccountKey*.json
+*service-account*.json
+
+# Firebase
+.firebase/
+
+# Misc
+*.pem
+*.key
