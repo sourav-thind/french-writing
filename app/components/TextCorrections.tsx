@@ -97,14 +97,14 @@ const TextCorrections: React.FC<TextCorrectionsProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5 mb-4">
+    <div className="bg-neutral-50 dark:bg-white/10 rounded-xl border border-neutral-200 dark:border-neutral-700 p-5 mb-4">
       <h3 className="font-semibold text-neutral-800 dark:text-white mb-3 flex items-center gap-2">
         <i className="fas fa-spell-check text-neutral-500"></i>
         Votre texte avec corrections
       </h3>
       
       {/* Single paragraph with inline corrections */}
-      <div className="bg-neutral-50 dark:bg-neutral-950 rounded-lg p-4 text-base leading-relaxed whitespace-pre-wrap">
+      <div className="bg-white dark:bg-white/20 rounded-lg p-4 text-base leading-relaxed whitespace-pre-wrap">
         {renderCorrectedParagraph()}
       </div>
       

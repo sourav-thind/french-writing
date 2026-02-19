@@ -163,9 +163,8 @@ export async function evaluateWriting(
     // Try models in order of preference
     // Note: gemini-1.5 models are widely available on free tier
     const models = [
-      'gemini-2.5-flash',  // Fast, widely available
-      'gemini-3-flash',    // Better quality, also widely available
-      'gemini-1.0-pro'     // Fallback for older accounts
+      'gemini-2.5-flash',  
+      'gemini-3-flash',    
     ];
     let lastError: any = null;
     
@@ -177,8 +176,7 @@ export async function evaluateWriting(
           model: modelName,
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 8192, // Increased to prevent truncation
-            responseMimeType: "application/json",
+            maxOutputTokens: 8192, // Increased to maximum allowed
           }
         });
         
@@ -189,35 +187,26 @@ export async function evaluateWriting(
         console.log(`Model ${modelName} succeeded`);
         console.log('Generated text:', generatedText);
         
-        // Parse JSON response
+        // Parse JSON response, handling Markdown code block markers
         let evaluation: TEFEvaluation;
+        let cleanedText = generatedText.trim();
+        // Remove all Markdown code block markers (```json, ```, etc.)
+        cleanedText = cleanedText.replace(/```json[\r\n]?|```/gi, '');
+        console.log('Cleaned Gemini response:', cleanedText);
+        // Try to extract the largest JSON object from the text
+        const firstBrace = cleanedText.indexOf('{');
+        const lastBrace = cleanedText.lastIndexOf('}');
+        if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+          console.error('Could not find JSON braces in response:', cleanedText);
+          throw new Error('La réponse de l\'IA est incomplète ou trop longue. Veuillez réessayer avec un texte plus court, ou réessayez plus tard.');
+        }
+        const jsonString = cleanedText.substring(firstBrace, lastBrace + 1);
+        console.log('Extracted JSON string:', jsonString);
         try {
-          // Clean the response - remove markdown code blocks if present
-          let cleanedText = generatedText.trim();
-          if (cleanedText.startsWith('```json')) {
-            cleanedText = cleanedText.replace(/```json\n?/, '').replace(/```$/, '');
-          } else if (cleanedText.startsWith('```')) {
-            cleanedText = cleanedText.replace(/```\n?/, '').replace(/```$/, '');
-          }
-          
-          // Try direct JSON parsing first
-          evaluation = JSON.parse(cleanedText) as TEFEvaluation;
-        } catch (parseError) {
-          console.warn('Direct JSON parsing failed, trying to extract JSON...');
-          
-          // If direct parsing fails, try extracting JSON between braces
-          const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
-          if (!jsonMatch) {
-            console.error('No JSON found in response:', generatedText);
-            throw new Error('JSON non trouvé dans la réponse');
-          }
-          
-          try {
-            evaluation = JSON.parse(jsonMatch[0]) as TEFEvaluation;
-          } catch (extractError) {
-            console.error('Failed to parse extracted JSON:', jsonMatch[0]);
-            throw new Error('Format JSON invalide dans la réponse');
-          }
+          evaluation = JSON.parse(jsonString) as TEFEvaluation;
+        } catch (e) {
+          console.error('JSON parsing failed:', e, jsonString);
+          throw new Error('La réponse de l\'IA a été tronquée ou est invalide. Veuillez réessayer avec un texte plus court, ou réessayez plus tard.');
         }
         
         // Validate structure
