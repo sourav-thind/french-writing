@@ -30,10 +30,10 @@ const AuthScreen: React.FC = () => {
           <h1 className="text-3xl font-semibold text-stone-800 dark:text-white mb-2">
             L&apos;Atelier d&apos;Écriture
           </h1>
-          <p className="text-stone-500 dark:text-indigo-300">Votre voyage vers la maîtrise commence ici.</p>
+          <p className="text-stone-500 dark:text-neutral-300">Votre voyage vers la maîtrise commence ici.</p>
         </div>
 
-        <div className="bg-white/80 dark:bg-indigo-900/20 backdrop-blur-sm rounded-2xl shadow-xl border border-stone-200 dark:border-indigo-800/30 p-8">
+        <div className="bg-white/80 dark:bg-neutral-900 backdrop-blur-sm rounded-2xl shadow-xl border border-stone-200 dark:border-neutral-700 p-8">
           {error && (
             <div className="bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm mb-6">
               {error}
@@ -43,7 +43,7 @@ const AuthScreen: React.FC = () => {
           <button
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-3 bg-white dark:bg-indigo-800/50 border border-stone-200 dark:border-indigo-700 py-3.5 px-4 rounded-xl font-medium text-stone-700 dark:text-indigo-100 hover:border-indigo-500 dark:hover:border-indigo-400 hover:shadow-md transition-all"
+            className="w-full flex items-center justify-center gap-3 bg-white dark:bg-neutral-800 border border-stone-200 dark:border-neutral-600 py-3.5 px-4 rounded-xl font-medium text-stone-700 dark:text-neutral-100 hover:border-neutral-600 dark:border-neutral-400 dark:hover:border-white hover:shadow-md transition-all"
           >
             {isLoading ? (
               <i className="fas fa-spinner fa-spin"></i>
@@ -56,7 +56,7 @@ const AuthScreen: React.FC = () => {
           </button>
         </div>
 
-        <p className="mt-8 text-center text-stone-400 dark:text-indigo-500 text-sm">
+        <p className="mt-8 text-center text-stone-400 dark:text-neutral-500 text-sm">
           En continuant, vous acceptez nos conditions.
         </p>
       </div>

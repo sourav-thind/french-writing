@@ -119,30 +119,30 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
   const speedLabel = speed === 0.6 ? "Lent" : speed === 0.9 ? "Normal" : "Rapide";
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-indigo-950 p-6">
+    <div className="min-h-screen bg-stone-50 dark:bg-neutral-950 p-6">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <button 
               onClick={onBack}
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white dark:hover:bg-indigo-900/30 transition-colors"
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white dark:hover:bg-neutral-800 transition-colors"
             >
-              <i className="fas fa-arrow-left text-stone-600 dark:text-indigo-300"></i>
+              <i className="fas fa-arrow-left text-stone-600 dark:text-neutral-300"></i>
             </button>
             <div>
               <h1 className="text-lg font-semibold text-stone-800 dark:text-white">{collection.name}</h1>
-              <p className="text-sm text-stone-500 dark:text-indigo-300">Phrase {currentIndex + 1} sur {collection.sentences.length}</p>
+              <p className="text-sm text-stone-500 dark:text-neutral-300">Phrase {currentIndex + 1} sur {collection.sentences.length}</p>
             </div>
           </div>
           <button 
             onClick={() => setShowTranslation(!showTranslation)}
-            className="px-4 py-2 text-sm font-medium text-stone-600 dark:text-indigo-300 hover:text-stone-900 dark:hover:text-white hover:bg-white dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-stone-600 dark:text-neutral-300 hover:text-stone-900 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-800 rounded-lg transition-colors"
           >
             {showTranslation ? 'Masquer' : 'Traduction'}
           </button>
         </div>
 
-        <div className="bg-white dark:bg-indigo-900/20 rounded-2xl shadow-lg border border-stone-200 dark:border-indigo-800/30 p-8 mb-6">
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-lg border border-stone-200 dark:border-neutral-700 p-8 mb-6">
           <input 
             ref={inputRef}
             type="text"
@@ -154,7 +154,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
           <div className="flex items-center justify-center gap-4 mb-10">
             <button 
               onClick={toggleSpeed}
-              className="px-4 py-2.5 bg-stone-100 dark:bg-indigo-900/40 rounded-xl text-sm font-medium text-stone-700 dark:text-indigo-200 hover:bg-stone-200 dark:hover:bg-indigo-800/50 transition-colors"
+              className="px-4 py-2.5 bg-stone-100 dark:bg-neutral-800 rounded-xl text-sm font-medium text-stone-700 dark:text-neutral-200 hover:bg-stone-200 dark:hover:bg-neutral-700 transition-colors"
             >
               {speedLabel}
             </button>
@@ -166,7 +166,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
             </button>
             <button 
               onClick={playNextWord}
-              className="px-4 py-2.5 bg-stone-100 dark:bg-indigo-900/40 rounded-xl text-sm font-medium text-stone-700 dark:text-indigo-200 hover:bg-stone-200 dark:hover:bg-indigo-800/50 transition-colors"
+              className="px-4 py-2.5 bg-stone-100 dark:bg-neutral-800 rounded-xl text-sm font-medium text-stone-700 dark:text-neutral-200 hover:bg-stone-200 dark:hover:bg-neutral-700 transition-colors"
             >
               Mot suivant
             </button>
@@ -189,14 +189,14 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
                 }
               } else if (userInput !== undefined) {
                 const isCorrect = userInput.toLowerCase() === char.toLowerCase();
-                colorClass = isCorrect ? "text-indigo-600 dark:text-indigo-400" : "text-rose-500 dark:text-rose-400";
+                colorClass = isCorrect ? "text-indigo-600 dark:text-neutral-400" : "text-rose-500 dark:text-rose-400";
                 displayChar = char;
               }
             
               return (
                 <span 
                   key={idx} 
-                  className={`border-b-2 min-w-[1rem] text-center ${colorClass} ${isCurrent ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' : 'border-transparent'}`}
+                  className={`border-b-2 min-w-[1rem] text-center ${colorClass} ${isCurrent ? 'border-neutral-600 dark:border-neutral-400 dark:border-indigo-400 bg-indigo-50 dark:bg-neutral-800' : 'border-transparent'}`}
                   onClick={() => inputRef.current?.focus()}
                 >
                   {displayChar}
@@ -235,7 +235,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
                   }
                   inputRef.current?.focus();
                 }}
-                className="w-12 h-12 bg-white dark:bg-indigo-900/40 border border-stone-200 dark:border-indigo-700 rounded-xl text-lg font-medium text-stone-700 dark:text-indigo-200 hover:bg-stone-50 dark:hover:bg-indigo-800/50 hover:border-indigo-400 dark:hover:border-indigo-400 transition-all shadow-sm"
+                className="w-12 h-12 bg-white dark:bg-neutral-800 border border-stone-200 dark:border-neutral-600 rounded-xl text-lg font-medium text-stone-700 dark:text-neutral-200 hover:bg-stone-50 dark:hover:bg-neutral-700 hover:border-indigo-400 dark:hover:border-white transition-all shadow-sm"
               >
                 {char}
               </button>
@@ -243,7 +243,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
           </div>
 
           {showTranslation && (
-            <div className="text-center text-stone-600 dark:text-indigo-300 italic mb-8 px-8">
+            <div className="text-center text-stone-600 dark:text-neutral-300 italic mb-8 px-8">
               &quot;{currentSentence.english}&quot;
             </div>
           )}
@@ -269,7 +269,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
           </div>
         </div>
 
-        <p className="text-center text-stone-400 dark:text-indigo-500 text-sm">
+        <p className="text-center text-stone-400 dark:text-neutral-500 text-sm">
           Utilisez votre clavier pour taper la phrase
         </p>
       </div>
