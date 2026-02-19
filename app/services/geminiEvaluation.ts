@@ -163,8 +163,8 @@ export async function evaluateWriting(
     // Try models in order of preference
     // Note: gemini-1.5 models are widely available on free tier
     const models = [
-      'gemini-1.5-flash',  // Fast, widely available
-      'gemini-1.5-pro',    // Better quality, also widely available
+      'gemini-2.5-flash',  // Fast, widely available
+      'gemini-3-flash',    // Better quality, also widely available
       'gemini-1.0-pro'     // Fallback for older accounts
     ];
     let lastError: any = null;
@@ -177,7 +177,8 @@ export async function evaluateWriting(
           model: modelName,
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 8192, // Increased to prevent truncation
+            responseMimeType: "application/json",
           }
         });
         
@@ -191,15 +192,32 @@ export async function evaluateWriting(
         // Parse JSON response
         let evaluation: TEFEvaluation;
         try {
+          // Clean the response - remove markdown code blocks if present
+          let cleanedText = generatedText.trim();
+          if (cleanedText.startsWith('```json')) {
+            cleanedText = cleanedText.replace(/```json\n?/, '').replace(/```$/, '');
+          } else if (cleanedText.startsWith('```')) {
+            cleanedText = cleanedText.replace(/```\n?/, '').replace(/```$/, '');
+          }
+          
           // Try direct JSON parsing first
-          evaluation = JSON.parse(generatedText) as TEFEvaluation;
-        } catch {
-          // If direct parsing fails, try extracting JSON
+          evaluation = JSON.parse(cleanedText) as TEFEvaluation;
+        } catch (parseError) {
+          console.warn('Direct JSON parsing failed, trying to extract JSON...');
+          
+          // If direct parsing fails, try extracting JSON between braces
           const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
           if (!jsonMatch) {
+            console.error('No JSON found in response:', generatedText);
             throw new Error('JSON non trouvé dans la réponse');
           }
-          evaluation = JSON.parse(jsonMatch[0]) as TEFEvaluation;
+          
+          try {
+            evaluation = JSON.parse(jsonMatch[0]) as TEFEvaluation;
+          } catch (extractError) {
+            console.error('Failed to parse extracted JSON:', jsonMatch[0]);
+            throw new Error('Format JSON invalide dans la réponse');
+          }
         }
         
         // Validate structure
