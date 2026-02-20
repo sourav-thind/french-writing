@@ -102,7 +102,7 @@ const TEFTaskMode: React.FC<TEFTaskModeProps> = ({ onBack }) => {
                 </h1>
                 {currentTask && (
                   <p className="text-sm text-stone-500 dark:text-neutral-300">
-                    {currentTask.title} • {currentTask.wordCount.min}-{currentTask.wordCount.max} mots
+                    
                   </p>
                 )}
               </div>
@@ -132,7 +132,7 @@ const TEFTaskMode: React.FC<TEFTaskModeProps> = ({ onBack }) => {
             </div>
           ) : currentTask ? (
             <WritingInterface
-              question={currentTask.scenario}
+              question={currentTask.type === 'tache2' ? currentTask.title : currentTask.scenario}
               wordCountRange={currentTask.wordCount}
               taskType={currentTask.type === 'tache1' ? 'Tâche 1 - Expression écrite' : 'Tâche 2 - Expression écrite'}
               taskDescription={currentTask.description}

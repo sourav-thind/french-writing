@@ -266,7 +266,7 @@ const WritingInterface: React.FC<WritingInterfaceProps> = ({
             <i className="fas fa-question-circle text-neutral-600 dark:text-neutral-400 mr-2"></i>
             Sujet
           </h2>
-          <p className="text-stone-700 dark:text-neutral-200 leading-relaxed">
+          <p className={`leading-relaxed ${question.startsWith('«') ? 'text-xl font-semibold text-stone-800 dark:text-white' : 'text-stone-700 dark:text-neutral-200'}`}>
             {question}
           </p>
         </div>

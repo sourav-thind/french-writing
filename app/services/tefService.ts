@@ -40,7 +40,7 @@ const sampleTache1Tasks: TEFTask[] = [
     title: 'Invitation à un événement',
     description: 'Vous devez écrire une invitation pour un événement familial.',
     scenario: 'Vous organisez une fête d\'anniversaire surprise pour votre mère qui aura lieu le mois prochain. Écrivez un message à votre cousin pour l\'inviter à cette fête.\n\nDans votre message, vous devez:\n• Saluer votre cousin\n• Lui annoncer la fête surprise\n• Lui donner la date et l\'heure\n• Lui demander de confirmer sa présence',
-    wordCount: { min: 60, max: 120 },
+    wordCount: { min: 80, max: 120 },
     difficulty: 'A2',
     points: 15
   },
@@ -50,7 +50,7 @@ const sampleTache1Tasks: TEFTask[] = [
     title: 'Message à un ami',
     description: 'Vous devez écrire un message à un ami.',
     scenario: 'Votre ami Paul vient de déménager dans une nouvelle ville. Écrivez-lui un message pour lui demander des nouvelles et lui donner des conseils pour s\'adapter.\n\nDans votre message, vous devez:\n• Saluer Paul\n• Lui demander comment il va\n• Lui donner des conseils pratiques\n• Lui souhaiter bonne chance',
-    wordCount: { min: 60, max: 120 },
+    wordCount: { min: 80, max: 120 },
     difficulty: 'A2',
     points: 15
   },
@@ -60,7 +60,7 @@ const sampleTache1Tasks: TEFTask[] = [
     title: 'Message de remerciement',
     description: 'Vous devez écrire un message de remerciement.',
     scenario: 'Votre collègue vous a aidé(e) avec un projet important au travail. Écrivez-lui un message pour le/la remercier.\n\nDans votre message, vous devez:\n• Remercier votre collègue\n• Expliquer comment il/elle vous a aidé(e)\n• Dire ce que cela représente pour vous\n• Proposer de lui rendre la pareille',
-    wordCount: { min: 60, max: 120 },
+    wordCount: { min: 80, max: 120 },
     difficulty: 'A2',
     points: 15
   }
@@ -73,7 +73,7 @@ const sampleTache2Tasks: TEFTask[] = [
     title: 'Lettre de réclamation',
     description: 'Vous devez rédiger une lettre formelle de réclamation.',
     scenario: 'Vous avez acheté un ordinateur portable qui ne fonctionne pas correctement. Écrivez une lettre au directeur du magasin pour vous plaindre et demander un remboursement ou un échange.\n\nDans votre lettre, vous devez:\n• Expliquer quand et où vous avez acheté l\'ordinateur\n• Décrire le problème rencontré\n• Dire ce que vous attendez comme solution\n• Exiger une réponse rapide',
-    wordCount: { min: 120, max: 150 },
+    wordCount: { min: 200, max: 250 },
     difficulty: 'B1',
     points: 15
   },
@@ -83,7 +83,7 @@ const sampleTache2Tasks: TEFTask[] = [
     title: 'Lettre d\'opinion',
     description: 'Vous devez exprimer votre opinion sur un sujet.',
     scenario: 'Un journal local demande l\'avis de ses lecteurs sur l\'interdiction des voitures dans le centre-ville. Écrivez une lettre au rédacteur en chef pour donner votre opinion.\n\nDans votre lettre, vous devez:\n• Dire si vous êtes pour ou contre cette mesure\n• Expliquer pourquoi vous avez cette opinion\n• Donner des exemples ou arguments\n• Conclure avec une recommandation',
-    wordCount: { min: 120, max: 150 },
+    wordCount: { min: 200, max: 250 },
     difficulty: 'B1',
     points: 15
   },
@@ -93,7 +93,7 @@ const sampleTache2Tasks: TEFTask[] = [
     title: 'Lettre de candidature',
     description: 'Vous devez rédiger une lettre de candidature.',
     scenario: 'Vous avez vu une offre d\'emploi pour un poste qui vous intéresse. Écrivez une lettre de candidature au responsable des ressources humaines.\n\nDans votre lettre, vous devez:\n• Présenter votre situation actuelle\n• Expliquer pourquoi vous postulez\n• Décrire vos compétences et expériences\n• Demander un entretien',
-    wordCount: { min: 120, max: 150 },
+    wordCount: { min: 200, max: 250 },
     difficulty: 'B1',
     points: 15
   }
@@ -123,7 +123,7 @@ export const tefService = {
           scenario: data.scenario,
           // Optional fields with defaults
           description: data.description || (type === 'tache1' ? 'Message, invitation, lettre informelle' : 'Lettre formelle, opinion, réclamation'),
-          wordCount: data.wordCount || (type === 'tache1' ? { min: 60, max: 120 } : { min: 120, max: 150 }),
+          wordCount: data.wordCount || (type === 'tache1' ? { min: 80, max: 120 } : { min: 200, max: 250 }),
           difficulty: data.difficulty || 'B1',
           points: data.points || 15,
           answer: data.answer || '',
