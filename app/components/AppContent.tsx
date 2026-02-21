@@ -11,7 +11,6 @@ import TEFTaskMode from './TEFTaskMode';
 import NormalPracticeMode from './NormalPracticeMode';
 import { useAuth } from '../contexts/AuthContext';
 import { saveCollectionToFirestore, getUserCollections, StoredCollection } from '../services/firebase';
-import { translateToEnglish } from '../services/geminiService';
 
 export default function AppContent() {
   const { user, loading } = useAuth();
@@ -19,14 +18,12 @@ export default function AppContent() {
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [customCollections, setCustomCollections] = useState<Collection[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<string>('');
 
   const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
 
     setIsUploading(true);
-    setUploadProgress('Lecture du fichier...');
     
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -38,24 +35,19 @@ export default function AppContent() {
       if (frenchSentences.length > 0) {
         const collectionId = `custom-${Date.now()}`;
         
+        const sentences: Sentence[] = frenchSentences.map((french) => ({
+          french: french,
+          english: ''
+        }));
+
+        const newCol: Collection = {
+          id: collectionId,
+          name: file.name.replace('.csv', ''),
+          description: 'Collection importée depuis un fichier CSV.',
+          sentences
+        };
+
         try {
-          setUploadProgress(`Traduction en cours... (0/${frenchSentences.length})`);
-          const englishTranslations = await translateToEnglish(frenchSentences);
-          
-          setUploadProgress('Sauvegarde dans la base de données...');
-          
-          const sentences: Sentence[] = frenchSentences.map((french, idx) => ({
-            french: french,
-            english: englishTranslations[idx] || ''
-          }));
-
-          const newCol: Collection = {
-            id: collectionId,
-            name: file.name.replace('.csv', ''),
-            description: 'Collection importée depuis un fichier CSV.',
-            sentences
-          };
-
           await saveCollectionToFirestore({
             id: collectionId,
             name: newCol.name,
@@ -71,7 +63,6 @@ export default function AppContent() {
         }
       }
       setIsUploading(false);
-      setUploadProgress('');
     };
     reader.readAsText(file);
   };
@@ -194,9 +185,9 @@ export default function AppContent() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-medium text-stone-800 dark:text-white mb-1">Importer vos phrases</h3>
-                    <p className="text-sm text-stone-500 dark:text-neutral-300">Format CSV: français uniquement (traduction automatique)</p>
+                    <p className="text-sm text-stone-500 dark:text-neutral-300">Format CSV: français uniquement</p>
                   </div>
-                  <label className={`cursor-pointer px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-neutral-500/25 transition-all flex items-center gap-2 ${isUploading ? 'opacity-50 cursor-wait' : ''}`}>
+                  <label className={`cursor-pointer px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-neutral-500/25 transition-all flex items-center gap-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     {isUploading ? (
                       <>
                         <i className="fas fa-spinner fa-spin"></i>

@@ -20,69 +20,36 @@ export const clearGeminiAPIKey = (): void => {
 };
 
 export async function translateToEnglish(frenchSentences: string[]): Promise<string[]> {
-  const apiKey = getGeminiAPIKey();
-  
-  if (!apiKey) {
-    throw new Error('Clé API Gemini non configurée. Veuillez configurer votre clé API.');
-  }
-
-  const BATCH_SIZE = 50;
-  const DELAY_BETWEEN_BATCHES = 2000;
-  const allTranslations: string[] = [];
+  const translations: string[] = [];
+  const BATCH_SIZE = 10;
+  const DELAY_BETWEEN_BATCHES = 300;
 
   for (let i = 0; i < frenchSentences.length; i += BATCH_SIZE) {
     const batch = frenchSentences.slice(i, i + BATCH_SIZE);
-    const sentencesText = batch.join('\n');
-    const prompt = `Traduisez les phrases françaises suivantes en anglais. Retournez uniquement un tableau JSON avec les traductions, sans autre texte.\n\n${sentencesText}`;
-
-    let success = false;
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    while (!success && attempts < maxAttempts) {
+    
+    const promises = batch.map(async (french) => {
       try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
-          model: 'gemma-3-27b-it',
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 10000,
-          }
-        });
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const generatedText = response.text();
-
-        let cleanedText = generatedText.trim();
-        cleanedText = cleanedText.replace(/```json[\r\n]?|```/gi, '');
-        
-        const translations = JSON.parse(cleanedText);
-        
-        if (Array.isArray(translations)) {
-          allTranslations.push(...translations);
-          success = true;
-        } else {
-          throw new Error('Format de réponse invalide');
+        const response = await fetch(
+          `https://api.mymemory.translated.net/get?q=${encodeURIComponent(french)}&langpair=fr|en`
+        );
+        const data = await response.json();
+        if (data.responseStatus === 200 && data.responseData?.translatedText) {
+          return data.responseData.translatedText;
         }
-      } catch (error: any) {
-        attempts++;
-        console.error(`Batch ${Math.floor(i/BATCH_SIZE) + 1} attempt ${attempts} failed:`, error.message);
-        
-        if (error.message?.includes('429') || error.message?.includes('rate limit')) {
-          await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES * 2));
-        } else if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        } else {
-          throw new Error(`Erreur de traduction: ${error.message}`);
-        }
+        return french;
+      } catch (error) {
+        console.error('Translation error:', error);
+        return french;
       }
-    }
+    });
+
+    const batchTranslations = await Promise.all(promises);
+    translations.push(...batchTranslations);
 
     if (i + BATCH_SIZE < frenchSentences.length) {
       await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
     }
   }
 
-  return allTranslations;
+  return translations;
 }

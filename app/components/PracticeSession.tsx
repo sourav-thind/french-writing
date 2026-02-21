@@ -20,6 +20,8 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
   const [wrongIndices, setWrongIndices] = useState<Set<number>>(new Set());
   const [speed, setSpeed] = useState<SpeechSpeed>(0.9);
   const [showTranslation, setShowTranslation] = useState(false);
+  const [translatedText, setTranslatedText] = useState<string>('');
+  const [isTranslating, setIsTranslating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const currentSentence = collection.sentences[currentIndex];
@@ -36,6 +38,8 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
 
   useEffect(() => {
     startSentence();
+    setTranslatedText('');
+    setShowTranslation(false);
   }, [currentIndex]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -118,6 +122,34 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
 
   const speedLabel = speed === 0.6 ? "Lent" : speed === 0.9 ? "Normal" : "Rapide";
 
+  const handleTranslation = async () => {
+    if (showTranslation && translatedText) {
+      setShowTranslation(false);
+      return;
+    }
+
+    if (currentSentence.english) {
+      setTranslatedText(currentSentence.english);
+      setShowTranslation(true);
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const response = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(currentSentence.french)}&langpair=fr|en`
+      );
+      const data = await response.json();
+      if (data.responseStatus === 200 && data.responseData?.translatedText) {
+        setTranslatedText(data.responseData.translatedText);
+        setShowTranslation(true);
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+    }
+    setIsTranslating(false);
+  };
+
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-neutral-950 p-6">
       <div className="max-w-3xl mx-auto">
@@ -135,10 +167,11 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
             </div>
           </div>
           <button 
-            onClick={() => setShowTranslation(!showTranslation)}
-            className="px-4 py-2 text-sm font-medium text-stone-600 dark:text-neutral-300 hover:text-stone-900 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-800 rounded-lg transition-colors"
+            onClick={handleTranslation}
+            disabled={isTranslating}
+            className="px-4 py-2 text-sm font-medium text-stone-600 dark:text-neutral-300 hover:text-stone-900 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-800 rounded-lg transition-colors disabled:opacity-50"
           >
-            {showTranslation ? 'Masquer' : 'Traduction'}
+            {isTranslating ? <i className="fas fa-spinner fa-spin"></i> : showTranslation ? 'Masquer' : 'Traduction'}
           </button>
         </div>
 
@@ -244,7 +277,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
 
           {showTranslation && (
             <div className="text-center text-stone-600 dark:text-neutral-300 italic mb-8 px-8">
-              &quot;{currentSentence.english}&quot;
+              &quot;{translatedText || currentSentence.english}&quot;
             </div>
           )}
 
