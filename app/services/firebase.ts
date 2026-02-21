@@ -33,7 +33,6 @@ function initializeFirebase() {
   db = getFirestore(app);
 }
 
-// Initialize on first import (client-side only)
 if (typeof window !== 'undefined') {
   initializeFirebase();
 }
@@ -45,40 +44,93 @@ export interface StoredCollection {
   id: string;
   name: string;
   description: string;
-  sentences: { french: string; english: string }[];
+  sentenceIds: string[];
   userId: string;
   createdAt: Date;
 }
 
-export async function saveCollectionToFirestore(collectionData: StoredCollection): Promise<string> {
-  if (!db) throw new Error("Firestore not initialized");
-  
-  const colRef = doc(db, "customCollections", collectionData.id);
-  await setDoc(colRef, {
-    ...collectionData,
-    createdAt: new Date()
-  });
-  return collectionData.id;
+export interface StoredSentence {
+  id: string;
+  french: string;
+  english: string;
+  collectionId: string;
 }
 
-export async function getCollectionFromFirestore(collectionId: string): Promise<StoredCollection | null> {
+export async function saveCollectionToFirestore(collectionData: StoredCollection, sentences: { french: string; english: string }[]): Promise<string> {
   if (!db) throw new Error("Firestore not initialized");
   
-  const colRef = doc(db, "customCollections", collectionId);
-  const snapshot = await getDoc(colRef);
-  
-  if (!snapshot.exists()) return null;
-  return snapshot.data() as StoredCollection;
+  try {
+    const batchSize = 100;
+    const sentenceIds: string[] = [];
+    
+    for (let i = 0; i < sentences.length; i += batchSize) {
+      const batch = sentences.slice(i, i + batchSize);
+      
+      for (let j = 0; j < batch.length; j++) {
+        const sentenceId = `${collectionData.id}_sentence_${i + j}`;
+        sentenceIds.push(sentenceId);
+        
+        const sentenceRef = doc(db, "sentences", sentenceId);
+        await setDoc(sentenceRef, {
+          id: sentenceId,
+          french: batch[j].french,
+          english: batch[j].english,
+          collectionId: collectionData.id
+        });
+      }
+    }
+
+    const colRef = doc(db, "customCollections", collectionData.id);
+    await setDoc(colRef, {
+      id: collectionData.id,
+      name: collectionData.name,
+      description: collectionData.description,
+      sentenceIds,
+      userId: collectionData.userId,
+      createdAt: new Date()
+    });
+    
+    return collectionData.id;
+  } catch (error: any) {
+    console.error("Error saving collection:", error.message);
+    throw error;
+  }
 }
 
 export async function getUserCollections(userId: string): Promise<StoredCollection[]> {
-  if (!db) throw new Error("Firestore not initialized");
+  if (!db) {
+    console.warn("Firestore not initialized, returning empty array");
+    return [];
+  }
   
-  const colRef = collection(db, "customCollections");
-  const q = query(colRef);
-  const snapshot = await getDocs(q);
+  try {
+    const colRef = collection(db, "customCollections");
+    const q = query(colRef);
+    const snapshot = await getDocs(q);
+    
+    return snapshot.docs
+      .map(doc => doc.data() as StoredCollection)
+      .filter(c => c.userId === userId);
+  } catch (error: any) {
+    console.error("Error fetching collections:", error.message);
+    return [];
+  }
+}
+
+export async function getCollectionSentences(collectionId: string): Promise<{ french: string; english: string }[]> {
+  if (!db) return [];
   
-  return snapshot.docs
-    .map(doc => doc.data() as StoredCollection)
-    .filter(c => c.userId === userId);
+  try {
+    const sentencesRef = collection(db, "sentences");
+    const q = query(sentencesRef);
+    const snapshot = await getDocs(q);
+    
+    return snapshot.docs
+      .map(doc => doc.data() as StoredSentence)
+      .filter(s => s.collectionId === collectionId)
+      .map(s => ({ french: s.french, english: s.english }));
+  } catch (error: any) {
+    console.error("Error fetching sentences:", error.message);
+    return [];
+  }
 }

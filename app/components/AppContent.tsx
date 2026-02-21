@@ -10,7 +10,7 @@ import Header from './Header';
 import TEFTaskMode from './TEFTaskMode';
 import NormalPracticeMode from './NormalPracticeMode';
 import { useAuth } from '../contexts/AuthContext';
-import { saveCollectionToFirestore, getUserCollections, StoredCollection } from '../services/firebase';
+import { saveCollectionToFirestore, getUserCollections, getCollectionSentences, StoredCollection } from '../services/firebase';
 
 export default function AppContent() {
   const { user, loading } = useAuth();
@@ -52,10 +52,10 @@ export default function AppContent() {
             id: collectionId,
             name: newCol.name,
             description: newCol.description,
-            sentences: newCol.sentences,
+            sentenceIds: [],
             userId: user.uid,
             createdAt: new Date()
-          });
+          }, sentences);
           setCustomCollections(prev => [...prev, newCol]);
         } catch (err: any) {
           console.error("Error saving collection:", err);
@@ -79,12 +79,18 @@ export default function AppContent() {
     if (!user) return;
     try {
       const stored = await getUserCollections(user.uid);
-      setCustomCollections(stored.map((c: StoredCollection) => ({
-        id: c.id,
-        name: c.name,
-        description: c.description,
-        sentences: c.sentences
-      })));
+      const collectionsWithSentences = await Promise.all(
+        stored.map(async (c: StoredCollection) => {
+          const sentences = await getCollectionSentences(c.id);
+          return {
+            id: c.id,
+            name: c.name,
+            description: c.description,
+            sentences
+          };
+        })
+      );
+      setCustomCollections(collectionsWithSentences);
     } catch (err) {
       console.error("Error loading collections:", err);
     }
