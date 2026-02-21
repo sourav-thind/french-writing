@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppMode, Collection, Sentence } from '../types';
 import { COLLECTIONS } from '../constants';
 import PracticeSession from './PracticeSession';
@@ -10,47 +10,94 @@ import Header from './Header';
 import TEFTaskMode from './TEFTaskMode';
 import NormalPracticeMode from './NormalPracticeMode';
 import { useAuth } from '../contexts/AuthContext';
+import { saveCollectionToFirestore, getUserCollections, StoredCollection } from '../services/firebase';
+import { translateToEnglish } from '../services/geminiService';
 
 export default function AppContent() {
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<AppMode>('home');
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [customCollections, setCustomCollections] = useState<Collection[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
 
-  const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
-        const lines = text.split('\n');
-        const sentences: Sentence[] = [];
-        
-        lines.forEach(line => {
-          const parts = line.split(',');
-          if (parts.length >= 2) {
-            sentences.push({
-              french: parts[0].trim(),
-              english: parts[1].trim()
-            });
-          }
-        });
+    if (!file || !user) return;
 
-        if (sentences.length > 0) {
+    setIsUploading(true);
+    setUploadProgress('Lecture du fichier...');
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const text = e.target?.result as string;
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      const frenchSentences = lines.map(line => line.trim()).filter(s => s.length > 0);
+
+      if (frenchSentences.length > 0) {
+        const collectionId = `custom-${Date.now()}`;
+        
+        try {
+          setUploadProgress(`Traduction en cours... (0/${frenchSentences.length})`);
+          const englishTranslations = await translateToEnglish(frenchSentences);
+          
+          setUploadProgress('Sauvegarde dans la base de données...');
+          
+          const sentences: Sentence[] = frenchSentences.map((french, idx) => ({
+            french: french,
+            english: englishTranslations[idx] || ''
+          }));
+
           const newCol: Collection = {
-            id: `custom-${Date.now()}`,
+            id: collectionId,
             name: file.name.replace('.csv', ''),
             description: 'Collection importée depuis un fichier CSV.',
             sentences
           };
+
+          await saveCollectionToFirestore({
+            id: collectionId,
+            name: newCol.name,
+            description: newCol.description,
+            sentences: newCol.sentences,
+            userId: user.uid,
+            createdAt: new Date()
+          });
           setCustomCollections(prev => [...prev, newCol]);
+        } catch (err: any) {
+          console.error("Error saving collection:", err);
+          alert(err.message || "Erreur lors de l'importation");
         }
-      };
-      reader.readAsText(file);
-    }
+      }
+      setIsUploading(false);
+      setUploadProgress('');
+    };
+    reader.readAsText(file);
   };
 
   const allCollections = [...COLLECTIONS, ...customCollections];
+
+  useEffect(() => {
+    if (user) {
+      loadUserCollections();
+    }
+  }, [user]);
+
+  const loadUserCollections = async () => {
+    if (!user) return;
+    try {
+      const stored = await getUserCollections(user.uid);
+      setCustomCollections(stored.map((c: StoredCollection) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        sentences: c.sentences
+      })));
+    } catch (err) {
+      console.error("Error loading collections:", err);
+    }
+  };
 
   if (loading) {
     return (
@@ -147,16 +194,26 @@ export default function AppContent() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-medium text-stone-800 dark:text-white mb-1">Importer vos phrases</h3>
-                    <p className="text-sm text-stone-500 dark:text-neutral-300">Format CSV: français, anglais</p>
+                    <p className="text-sm text-stone-500 dark:text-neutral-300">Format CSV: français uniquement (traduction automatique)</p>
                   </div>
-                  <label className="cursor-pointer px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-neutral-500/25 transition-all flex items-center gap-2">
-                    <i className="fas fa-upload"></i>
-                    Importer
+                  <label className={`cursor-pointer px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-neutral-500/25 transition-all flex items-center gap-2 ${isUploading ? 'opacity-50 cursor-wait' : ''}`}>
+                    {isUploading ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin"></i>
+                        Importation...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-upload"></i>
+                        Importer
+                      </>
+                    )}
                     <input 
                       type="file" 
                       accept=".csv"
                       onChange={handleCsvUpload}
                       className="hidden"
+                      disabled={isUploading}
                     />
                   </label>
                 </div>

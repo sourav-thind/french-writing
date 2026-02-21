@@ -163,7 +163,8 @@ export async function evaluateWriting(
     // Try models in order of preference
     // Note: gemini-1.5 models are widely available on free tier
     const models = [
-      'gemini-2.5-flash',  
+      'gemini-2.5-pro', 
+      'gemma-3-27b-it', 
       'gemini-3-flash',    
     ];
     let lastError: any = null;
