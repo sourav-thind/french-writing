@@ -216,10 +216,10 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
               {repeatEnabled ? 'Répéter ON' : 'Répéter OFF'}
             </button>
             <button 
-              onClick={handleTranslation}
+              onClick={toggleSpeed}
               className="px-4 py-2 text-sm font-medium text-stone-600 dark:text-neutral-300 hover:text-stone-900 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-800 rounded-lg transition-colors"
             >
-              {showTranslation ? 'Masquer' : 'Traduction'}
+              {speedLabel}
             </button>
           </div>
         </div>
@@ -330,7 +330,13 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
             </div>
           )}
 
-          <div className="flex justify-center">
+          <div className="flex justify-center gap-3">
+            <button 
+              onClick={handleTranslation}
+              className="px-4 py-3 bg-stone-100 dark:bg-neutral-800 text-stone-600 dark:text-neutral-300 rounded-xl font-medium hover:bg-stone-200 dark:hover:bg-neutral-700 transition-colors"
+            >
+              {showTranslation ? 'Masquer' : 'Traduction'}
+            </button>
             {!isFinished ? (
               <button 
                 onClick={getHint}
