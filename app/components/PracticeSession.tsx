@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Collection } from '../types';
 import { speechService } from '../services/speechService';
+import { saveUserProgress, getUserProgress, UserProgress } from '../services/firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PracticeSessionProps {
   collection: Collection;
@@ -11,7 +13,17 @@ interface PracticeSessionProps {
 
 type SpeechSpeed = 0.6 | 0.9 | 1.3;
 
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack }) => {
+  const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInputs, setUserInputs] = useState<string[]>([]);
   const [currentCharIdx, setCurrentCharIdx] = useState(0);
@@ -20,13 +32,31 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
   const [wrongIndices, setWrongIndices] = useState<Set<number>>(new Set());
   const [speed, setSpeed] = useState<SpeechSpeed>(0.9);
   const [showTranslation, setShowTranslation] = useState(false);
-  const [translatedText, setTranslatedText] = useState<string>('');
-  const [isTranslating, setIsTranslating] = useState(false);
+  const [shuffledSentences, setShuffledSentences] = useState<{ french: string; english: string }[]>([]);
+  const [sentenceProgress, setSentenceProgress] = useState<{ [key: number]: number }>({});
+  const [repeatEnabled, setRepeatEnabled] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const currentSentence = collection.sentences[currentIndex];
+  useEffect(() => {
+    const initPractice = async () => {
+      const sentences = shuffleArray(collection.sentences);
+      setShuffledSentences(sentences);
+
+      if (user) {
+        const progress = await getUserProgress(user.uid, collection.id);
+        if (progress) {
+          setSentenceProgress(progress.sentenceProgress || {});
+          setRepeatEnabled(progress.repeatEnabled || false);
+        }
+      }
+    };
+    initPractice();
+  }, [collection, user]);
+
+  const currentSentence = shuffledSentences[currentIndex] || collection.sentences[currentIndex];
 
   const startSentence = useCallback(() => {
+    if (!currentSentence?.french) return;
     speechService.speak(currentSentence.french, speed);
     setUserInputs([]);
     setCurrentCharIdx(0);
@@ -37,10 +67,10 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
   }, [currentSentence, speed]);
 
   useEffect(() => {
+    if (!shuffledSentences.length) return;
     startSentence();
-    setTranslatedText('');
     setShowTranslation(false);
-  }, [currentIndex]);
+  }, [currentIndex, startSentence]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (isFinished) return;
@@ -101,8 +131,27 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
     }
   };
 
-  const nextSentence = () => {
-    if (currentIndex < collection.sentences.length - 1) {
+  const nextSentence = async () => {
+    const newProgress = { ...sentenceProgress };
+    newProgress[currentIndex] = (newProgress[currentIndex] || 0) + 1;
+    setSentenceProgress(newProgress);
+
+    if (user) {
+      await saveUserProgress({
+        userId: user.uid,
+        collectionId: collection.id,
+        sentenceProgress: newProgress,
+        repeatEnabled,
+        updatedAt: new Date()
+      });
+    }
+
+    const totalSentences = shuffledSentences.length;
+    
+    if (repeatEnabled) {
+      const randomIndex = Math.floor(Math.random() * totalSentences);
+      setCurrentIndex(randomIndex);
+    } else if (currentIndex < totalSentences - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
       onBack();
@@ -122,37 +171,13 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
 
   const speedLabel = speed === 0.6 ? "Lent" : speed === 0.9 ? "Normal" : "Rapide";
 
-  const handleTranslation = async () => {
-    if (showTranslation && translatedText) {
-      setShowTranslation(false);
-      return;
-    }
-
-    if (currentSentence.english) {
-      setTranslatedText(currentSentence.english);
-      setShowTranslation(true);
-      return;
-    }
-
-    setIsTranslating(true);
-    try {
-      const response = await fetch(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(currentSentence.french)}&langpair=fr|en`
-      );
-      const data = await response.json();
-      if (data.responseStatus === 200 && data.responseData?.translatedText) {
-        setTranslatedText(data.responseData.translatedText);
-        setShowTranslation(true);
-      }
-    } catch (error) {
-      console.error('Translation error:', error);
-    }
-    setIsTranslating(false);
+  const handleTranslation = () => {
+    setShowTranslation(!showTranslation);
   };
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-neutral-950 p-6">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <button 
@@ -163,16 +188,40 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
             </button>
             <div>
               <h1 className="text-lg font-semibold text-stone-800 dark:text-white">{collection.name}</h1>
-              <p className="text-sm text-stone-500 dark:text-neutral-300">Phrase {currentIndex + 1} sur {collection.sentences.length}</p>
+              <p className="text-sm text-stone-500 dark:text-neutral-300">Phrase {currentIndex + 1} sur {shuffledSentences.length}</p>
             </div>
           </div>
-          <button 
-            onClick={handleTranslation}
-            disabled={isTranslating}
-            className="px-4 py-2 text-sm font-medium text-stone-600 dark:text-neutral-300 hover:text-stone-900 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-800 rounded-lg transition-colors disabled:opacity-50"
-          >
-            {isTranslating ? <i className="fas fa-spinner fa-spin"></i> : showTranslation ? 'Masquer' : 'Traduction'}
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => {
+                const newRepeat = !repeatEnabled;
+                setRepeatEnabled(newRepeat);
+                if (user) {
+                  saveUserProgress({
+                    userId: user.uid,
+                    collectionId: collection.id,
+                    sentenceProgress,
+                    repeatEnabled: newRepeat,
+                    updatedAt: new Date()
+                  });
+                }
+              }}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                repeatEnabled 
+                  ? 'bg-indigo-600 text-white' 
+                  : 'bg-stone-100 dark:bg-neutral-800 text-stone-600 dark:text-neutral-300 hover:bg-stone-200 dark:hover:bg-neutral-700'
+              }`}
+            >
+              <i className={`fas fa-repeat mr-2 ${repeatEnabled ? 'text-white' : ''}`}></i>
+              {repeatEnabled ? 'Répéter ON' : 'Répéter OFF'}
+            </button>
+            <button 
+              onClick={handleTranslation}
+              className="px-4 py-2 text-sm font-medium text-stone-600 dark:text-neutral-300 hover:text-stone-900 dark:hover:text-white hover:bg-white dark:hover:bg-neutral-800 rounded-lg transition-colors"
+            >
+              {showTranslation ? 'Masquer' : 'Traduction'}
+            </button>
+          </div>
         </div>
 
         <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-lg border border-stone-200 dark:border-neutral-700 p-8 mb-6">
@@ -205,7 +254,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
             </button>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-x-1.5 gap-y-3 mb-8 text-4xl font-mono">
+          <div className="flex flex-wrap justify-center gap-x-2 gap-y-4 mb-8 text-5xl font-mono px-4">
             {currentSentence.french.split('').map((char, idx) => {
               const userInput = userInputs[idx];
               const isCurrent = idx === currentCharIdx;
@@ -229,7 +278,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
               return (
                 <span 
                   key={idx} 
-                  className={`border-b-2 min-w-[1rem] text-center ${colorClass} ${isCurrent ? 'border-neutral-600 dark:border-neutral-400 dark:border-indigo-400 bg-indigo-50 dark:bg-neutral-800' : 'border-transparent'}`}
+                  className={`border-b-2 min-w-[2rem] text-center ${colorClass} ${isCurrent ? 'border-neutral-600 dark:border-neutral-400  bg-indigo-50 dark:bg-neutral-800' : 'border-transparent'}`}
                   onClick={() => inputRef.current?.focus()}
                 >
                   {displayChar}
@@ -277,7 +326,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({ collection, onBack })
 
           {showTranslation && (
             <div className="text-center text-stone-600 dark:text-neutral-300 italic mb-8 px-8">
-              &quot;{translatedText || currentSentence.english}&quot;
+              {currentSentence.english}
             </div>
           )}
 

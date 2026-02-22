@@ -56,6 +56,14 @@ export interface StoredSentence {
   collectionId: string;
 }
 
+export interface UserProgress {
+  userId: string;
+  collectionId: string;
+  sentenceProgress: { [sentenceIndex: number]: number };
+  repeatEnabled: boolean;
+  updatedAt: Date;
+}
+
 export async function saveCollectionToFirestore(collectionData: StoredCollection, sentences: { french: string; english: string }[]): Promise<string> {
   if (!db) throw new Error("Firestore not initialized");
   
@@ -131,6 +139,55 @@ export async function getCollectionSentences(collectionId: string): Promise<{ fr
       .map(s => ({ french: s.french, english: s.english }));
   } catch (error: any) {
     console.error("Error fetching sentences:", error.message);
+    return [];
+  }
+}
+
+export async function getUserProgress(userId: string, collectionId: string): Promise<UserProgress | null> {
+  if (!db) return null;
+  
+  try {
+    const progressRef = doc(db, "userProgress", `${userId}_${collectionId}`);
+    const snapshot = await getDoc(progressRef);
+    
+    if (!snapshot.exists()) return null;
+    return snapshot.data() as UserProgress;
+  } catch (error: any) {
+    console.error("Error fetching progress:", error.message);
+    return null;
+  }
+}
+
+export async function saveUserProgress(progress: UserProgress): Promise<void> {
+  if (!db) throw new Error("Firestore not initialized");
+  
+  try {
+    const progressRef = doc(db, "userProgress", `${progress.userId}_${progress.collectionId}`);
+    await setDoc(progressRef, {
+      ...progress,
+      updatedAt: new Date()
+    });
+  } catch (error: any) {
+    console.error("Error saving progress:", error.message);
+    throw error;
+  }
+}
+
+export async function getAllUserProgress(userId: string): Promise<UserProgress[]> {
+  if (!db) return [];
+  
+  try {
+    const progressRef = collection(db, "userProgress");
+    const q = query(progressRef);
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) return [];
+    
+    return snapshot.docs
+      .map(doc => doc.data() as UserProgress)
+      .filter(p => p.userId === userId);
+  } catch (error: any) {
+    console.error("Error fetching all progress:", error.message);
     return [];
   }
 }

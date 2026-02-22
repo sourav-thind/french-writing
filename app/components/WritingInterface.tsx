@@ -163,7 +163,7 @@ const WritingInterface: React.FC<WritingInterfaceProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       {/* Evaluation Results Panel */}
       {evaluation && (
         <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-stone-200 dark:border-neutral-700 p-6 mb-6 animate-in slide-in-from-top-4">
@@ -335,7 +335,7 @@ const WritingInterface: React.FC<WritingInterfaceProps> = ({
           onChange={handleContentChange}
           placeholder={evaluation ? "Évaluation complétée" : "Écrivez votre texte ici..."}
           readOnly={!!evaluation}
-          className={`w-full h-96 p-6 bg-white dark:bg-neutral-900 border border-stone-200 dark:border-neutral-700 rounded-2xl text-stone-800 dark:text-white placeholder-stone-400 dark:placeholder-neutral-500 dark:placeholder-neutral-500 focus:border-neutral-600 dark:border-neutral-400 dark:focus:border-indigo-400 focus:ring-2 focus:ring-neutral-200 dark:focus:ring-neutral-700 dark:focus:ring-neutral-700 outline-none resize-none transition-all text-lg leading-relaxed ${
+          className={`w-full h-[600px] p-6 bg-white dark:bg-neutral-900 border border-stone-200 dark:border-neutral-700 rounded-2xl text-stone-800 dark:text-white placeholder-stone-400 dark:placeholder-neutral-500 focus:border-neutral-600 dark:border-neutral-400 dark:focus:border-indigo-400 focus:ring-2 focus:ring-neutral-200 dark:focus:ring-neutral-700 outline-none resize-none transition-all text-lg leading-relaxed ${
             evaluation ? 'bg-stone-50 dark:bg-neutral-950/50' : ''
           }`}
           spellCheck={false}

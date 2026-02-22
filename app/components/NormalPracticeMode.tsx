@@ -35,7 +35,7 @@ const NormalPracticeMode: React.FC<NormalPracticeModeProps> = ({ onBack }) => {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-neutral-950 p-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <button 

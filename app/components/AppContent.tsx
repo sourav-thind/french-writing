@@ -10,7 +10,7 @@ import Header from './Header';
 import TEFTaskMode from './TEFTaskMode';
 import NormalPracticeMode from './NormalPracticeMode';
 import { useAuth } from '../contexts/AuthContext';
-import { saveCollectionToFirestore, getUserCollections, getCollectionSentences, StoredCollection } from '../services/firebase';
+import { saveCollectionToFirestore, getUserCollections, getCollectionSentences, StoredCollection, getAllUserProgress, UserProgress } from '../services/firebase';
 
 export default function AppContent() {
   const { user, loading } = useAuth();
@@ -18,6 +18,7 @@ export default function AppContent() {
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [customCollections, setCustomCollections] = useState<Collection[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [collectionProgress, setCollectionProgress] = useState<{ [collectionId: string]: UserProgress }>({});
 
   const handleCsvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -30,15 +31,19 @@ export default function AppContent() {
       const text = e.target?.result as string;
       const lines = text.split('\n').filter(line => line.trim());
       
-      const frenchSentences = lines.map(line => line.trim()).filter(s => s.length > 0);
+      const sentences: Sentence[] = [];
+      lines.forEach(line => {
+        const parts = line.split(',');
+        if (parts.length >= 2) {
+          sentences.push({
+            french: parts[0].trim().replace(/"/g, ''),
+            english: parts[1].trim().replace(/"/g, '')
+          });
+        }
+      });
 
-      if (frenchSentences.length > 0) {
+      if (sentences.length > 0) {
         const collectionId = `custom-${Date.now()}`;
-        
-        const sentences: Sentence[] = frenchSentences.map((french) => ({
-          french: french,
-          english: ''
-        }));
 
         const newCol: Collection = {
           id: collectionId,
@@ -91,6 +96,13 @@ export default function AppContent() {
         })
       );
       setCustomCollections(collectionsWithSentences);
+
+      const allProgress = await getAllUserProgress(user.uid);
+      const progressMap: { [collectionId: string]: UserProgress } = {};
+      allProgress.forEach(p => {
+        progressMap[p.collectionId] = p;
+      });
+      setCollectionProgress(progressMap);
     } catch (err) {
       console.error("Error loading collections:", err);
     }
@@ -160,38 +172,70 @@ export default function AppContent() {
               </div>
 
               <div className="grid gap-4 mb-12">
-                {allCollections.map((col, index) => (
-                  <button
-                    key={col.id}
-                    onClick={() => {
-                      setSelectedCollection(col);
-                      setMode('practice');
-                    }}
-                    className="group flex items-center justify-between p-5 bg-white dark:bg-neutral-900 rounded-2xl shadow-sm hover:shadow-md transition-all border border-stone-200 dark:border-neutral-700"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md ${
-                        index % 3 === 0 ? 'bg-gradient-to-br from-indigo-500 to-violet-600' :
-                        index % 3 === 1 ? 'bg-gradient-to-br from-rose-400 to-orange-400' :
-                        'bg-gradient-to-br from-teal-500 to-emerald-500'
-                      }`}>
-                        <i className="fas fa-layer-group"></i>
+                {allCollections.map((col, index) => {
+                  const progress = collectionProgress[col.id];
+                  const totalSentences = col.sentences.length;
+                  const seenCount = progress ? Object.values(progress.sentenceProgress).filter(p => p >= 1).length : 0;
+                  const masterCount = progress ? Object.values(progress.sentenceProgress).filter(p => p >= 2).length : 0;
+                  
+                  return (
+                    <button
+                      key={col.id}
+                      onClick={() => {
+                        setSelectedCollection(col);
+                        setMode('practice');
+                      }}
+                      className="group flex flex-col gap-3 p-5 bg-white dark:bg-neutral-900 rounded-2xl shadow-sm hover:shadow-md transition-all border border-stone-200 dark:border-neutral-700"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-md ${
+                            index % 3 === 0 ? 'bg-gradient-to-br from-indigo-500 to-violet-600' :
+                            index % 3 === 1 ? 'bg-gradient-to-br from-rose-400 to-orange-400' :
+                            'bg-gradient-to-br from-teal-500 to-emerald-500'
+                          }`}>
+                            <i className="fas fa-layer-group"></i>
+                          </div>
+                          <div className="text-left">
+                            <div className="font-medium text-stone-800 dark:text-white">{col.name}</div>
+                            <div className="text-sm text-stone-500 dark:text-neutral-300">{col.sentences.length} phrases</div>
+                          </div>
+                        </div>
+                        <i className="fas fa-chevron-right text-stone-300 dark:text-indigo-700 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"></i>
                       </div>
-                      <div className="text-left">
-                        <div className="font-medium text-stone-800 dark:text-white">{col.name}</div>
-                        <div className="text-sm text-stone-500 dark:text-neutral-300">{col.sentences.length} phrases</div>
-                      </div>
-                    </div>
-                    <i className="fas fa-chevron-right text-stone-300 dark:text-indigo-700 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"></i>
-                  </button>
-                ))}
+                      
+                      {progress && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-blue-600 dark:text-blue-400 w-16">Vu: {seenCount}/{totalSentences}</span>
+                            <div className="flex-1 h-2 bg-stone-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-blue-500 transition-all duration-300"
+                                style={{ width: `${(seenCount / totalSentences) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-emerald-600 dark:text-emerald-400 w-16">Maîtrisé: {masterCount}/{totalSentences}</span>
+                            <div className="flex-1 h-2 bg-stone-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-emerald-500 transition-all duration-300"
+                                style={{ width: `${(masterCount / totalSentences) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 border border-stone-200 dark:border-neutral-700">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-medium text-stone-800 dark:text-white mb-1">Importer vos phrases</h3>
-                    <p className="text-sm text-stone-500 dark:text-neutral-300">Format CSV: français uniquement</p>
+                    <p className="text-sm text-stone-500 dark:text-neutral-300">Format CSV: français, anglais</p>
                   </div>
                   <label className={`cursor-pointer px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-neutral-500/25 transition-all flex items-center gap-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     {isUploading ? (
