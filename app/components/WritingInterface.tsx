@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { evaluateWriting, generateMockEvaluation, TEFEvaluation, getCLBDescription, getCLBColor } from '../services/geminiEvaluation';
+import evaluateWriting, { generateMockEvaluation, TEFEvaluation, getCLBDescription, getCLBColor } from '../services/geminiEvaluation';
 import TextCorrections from './TextCorrections';
 
 interface WritingInterfaceProps {
@@ -37,7 +37,7 @@ const WritingInterface: React.FC<WritingInterfaceProps> = ({
   submitButtonText = 'Soumettre',
   showQuestion = true,
   showTimer = true,
-  timeLimit = 30, // Default 30 minutes
+  timeLimit = 30,
   onEvaluationComplete
 }) => {
   const [content, setContent] = useState('');
@@ -46,6 +46,7 @@ const WritingInterface: React.FC<WritingInterfaceProps> = ({
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluation, setEvaluation] = useState<TEFEvaluation | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -118,7 +119,8 @@ const WritingInterface: React.FC<WritingInterfaceProps> = ({
           wordCountRange?.min || 0,
           wordCountRange?.max || 999,
           wordCount,
-          timeSpent
+          timeSpent,
+          selectedModel
         );
         console.log('Gemini API succeeded');
       } catch (apiError: any) {
@@ -221,6 +223,8 @@ const WritingInterface: React.FC<WritingInterfaceProps> = ({
           <TextCorrections 
             originalText={content}
             corrections={evaluation.corrections || []}
+            correctedVersion={evaluation.correctedVersion}
+            idealVersion={evaluation.idealVersion}
           />
 
           {/* Overall Feedback */}
@@ -352,7 +356,18 @@ const WritingInterface: React.FC<WritingInterfaceProps> = ({
 
       {/* Submit Button - Only show when not evaluated */}
       {!evaluation && (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-stone-600 dark:text-neutral-300">Modèle:</label>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="px-3 py-2 bg-white dark:bg-neutral-800 border border-stone-300 dark:border-neutral-600 rounded-lg text-sm text-stone-700 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemma-3-27b-it">Gemma 3</option>
+            </select>
+          </div>
           <button
             onClick={handleSubmit}
             disabled={!content.trim() || isEvaluating}
